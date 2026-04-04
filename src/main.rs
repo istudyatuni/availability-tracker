@@ -14,6 +14,10 @@ struct Args {
     /// Address to check
     address: String,
 
+    /// Timeout in seconds to wait for curl
+    #[arg(long = "curl", default_value_t = 2)]
+    curl_timeout: u64,
+
     /// Do not perform real requests
     #[arg(long)]
     test: bool,
@@ -56,14 +60,27 @@ fn main() {
     }
 }
 
-fn check(address: &str) -> bool {
-    Command::new("curl")
-        .args(["--connect-timeout", "2", "-s", address])
+fn check(address: &str, timeout_sec: u64) -> bool {
+    let mut handle = Command::new("curl")
+        .args(["--silent", address])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
-        .expect("failed to run curl")
-        .success()
+        .spawn()
+        .expect("failed to spawn curl command");
+
+    for _ in 0..timeout_sec {
+        std::thread::sleep(Duration::from_secs(1));
+        if let Some(status) = handle
+            .try_wait()
+            .expect("failed to wait curl subprocess status")
+        {
+            return status.success();
+        }
+    }
+
+    handle.kill().expect("failed to kill curl");
+
+    false
 }
 
 fn get_time() -> String {
