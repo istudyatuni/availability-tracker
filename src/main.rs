@@ -18,6 +18,10 @@ struct Args {
     #[arg(long = "curl", default_value_t = 2)]
     curl_timeout: u64,
 
+    /// Timeout in seconds between requests
+    #[arg(long = "sleep", default_value_t = 8)]
+    sleep_timeout: u64,
+
     /// Do not perform real requests
     #[arg(long)]
     test: bool,
@@ -35,14 +39,24 @@ fn main() {
     println!("start  at {}", get_time());
 
     let mut prev_success = None;
+    let mut prev_msg = None;
     loop {
+        if let Some(msg) = &prev_msg {
+            print!("\r{msg} (checking)");
+            flush();
+        }
+
         let success = if args.test {
+            std::thread::sleep(Duration::from_secs(args.curl_timeout));
             test_rng.next().unwrap() == 0
         } else {
             check(&args.address, args.curl_timeout)
         };
         if let Some(prev_success) = prev_success {
             if success != prev_success {
+                if let Some(msg) = prev_msg {
+                    print!("\r{msg}{}", " ".repeat(15));
+                }
                 println!();
             } else {
                 print!("\r");
@@ -50,13 +64,21 @@ fn main() {
         }
         prev_success = Some(success);
         let time = get_time();
-        if success {
-            print!("{}     at {time}", "ok".green());
+        let msg = if success {
+            format!("{ok}     at {time}", ok = "ok".green())
         } else {
-            print!("{} at {time}", "failed".red());
+            format!("{failed} at {time}", failed = "failed".red())
+        };
+        for i in 0..args.sleep_timeout {
+            if i != 0 {
+                print!("\r");
+            }
+            let i = args.sleep_timeout - i;
+            print!("{msg} ({i} s) {}", " ".repeat(4));
+            flush();
+            std::thread::sleep(Duration::from_secs(1));
         }
-        std::io::stdout().flush().expect("failed to flush stdout");
-        std::thread::sleep(Duration::from_secs(10));
+        prev_msg = Some(msg);
     }
 }
 
@@ -96,4 +118,8 @@ fn get_time() -> String {
         .to_offset(*OFFSET)
         .format(&FORMAT)
         .expect("failed to format time")
+}
+
+fn flush() {
+    std::io::stdout().flush().expect("failed to flush stdout");
 }
