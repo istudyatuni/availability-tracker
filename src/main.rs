@@ -130,9 +130,8 @@ fn get_time() -> String {
         "[year]-[month]-[day] [hour]:[minute]:[second]+[offset_hour]:[offset_minute]"
     );
 
-    static OFFSET: LazyLock<UtcOffset> = LazyLock::new(|| {
-        UtcOffset::current_local_offset().expect("failed to get local time offset")
-    });
+    static OFFSET: LazyLock<UtcOffset> =
+        LazyLock::new(|| UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
 
     time::UtcDateTime::now()
         .to_offset(*OFFSET)
