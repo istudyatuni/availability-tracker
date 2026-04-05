@@ -2,7 +2,7 @@ use std::{
     io::Write,
     process::{Command, Stdio},
     sync::LazyLock,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use clap::Parser;
@@ -60,12 +60,15 @@ fn main() {
         println!("running in test mode");
     }
     println!(
-        "{:<PREFIX_LEN$} at {}",
+        "{:<PREFIX_LEN$} at {:<seen_width$} (after {})",
         STATUS.dimmed(),
-        "first seen".dimmed()
+        "first seen".dimmed(),
+        "since previous".dimmed(),
+        seen_width = get_time().len(),
     );
 
     let mut prev_success = None;
+    let mut prev_timer = None;
     loop {
         print!("  checking{:<20}\r", "");
         flush();
@@ -78,7 +81,11 @@ fn main() {
         };
 
         if prev_success.is_none_or(|prev| prev != success) {
-            println!("{}", format_msg(success));
+            let elapsed = prev_timer
+                .map(|t: Instant| format!(" (after {})", format_sec(t.elapsed())))
+                .unwrap_or_default();
+            println!("{}{elapsed}", format_msg(success));
+            prev_timer = Some(Instant::now());
         }
         prev_success = Some(success);
         for i in 0..args.sleep_timeout {
@@ -144,6 +151,12 @@ fn format_status(success: bool) -> String {
     } else {
         FAILED.red().to_string()
     }
+}
+
+fn format_sec(dur: Duration) -> String {
+    // remove precision higher than sec
+    let elapsed = Duration::from_secs(dur.as_secs());
+    humantime::format_duration(elapsed).to_string()
 }
 
 fn flush() {

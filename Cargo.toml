@@ -6,5 +6,6 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive"] }
+humantime = "2.3.0"
 owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 time = { version = "0.3.47", features = ["formatting", "local-offset", "macros"] }
