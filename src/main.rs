@@ -22,8 +22,8 @@ const FAILED: &str = "failed";
 /// println!("{ok:<PREFIX_LEN$}");
 /// ```
 ///
-/// prefix should be adjusted to include number of additional ascii color
-/// codes, e.g. for fg colors:
+/// prefix should be adjusted to include number of additional symbols for
+/// ascii color code, e.g. for fg colors:
 ///
 /// ```
 /// let ok = OK.green().to_string();
