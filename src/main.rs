@@ -35,16 +35,12 @@ fn main() {
     if args.test {
         println!("running in test mode");
     }
-    println!("{} at {}", "status".dimmed(), "[last seen]".dimmed());
-    println!("start  at {}", get_time());
+    println!("{} at {}", "status".dimmed(), "first seen".dimmed());
 
     let mut prev_success = None;
-    let mut prev_msg = None;
     loop {
-        if let Some(msg) = &prev_msg {
-            print!("\r{msg} (checking)");
-            flush();
-        }
+        print!("  checking{:<20}\r", "");
+        flush();
 
         let success = if args.test {
             std::thread::sleep(Duration::from_secs(args.curl_timeout));
@@ -52,33 +48,17 @@ fn main() {
         } else {
             check(&args.address, args.curl_timeout)
         };
-        if let Some(prev_success) = prev_success {
-            if success != prev_success {
-                if let Some(msg) = prev_msg {
-                    print!("\r{msg}{}", " ".repeat(15));
-                }
-                println!();
-            } else {
-                print!("\r");
-            }
+
+        if prev_success.is_none_or(|prev| prev != success) {
+            println!("{}", format_msg(success));
         }
         prev_success = Some(success);
-        let time = get_time();
-        let msg = if success {
-            format!("{ok}     at {time}", ok = "ok".green())
-        } else {
-            format!("{failed} at {time}", failed = "failed".red())
-        };
         for i in 0..args.sleep_timeout {
-            if i != 0 {
-                print!("\r");
-            }
             let i = args.sleep_timeout - i;
-            print!("{msg} ({i} s) {}", " ".repeat(4));
+            print!("  {i} s (last status {}) \r", format_status(success));
             flush();
             std::thread::sleep(Duration::from_secs(1));
         }
-        prev_msg = Some(msg);
     }
 }
 
@@ -118,6 +98,25 @@ fn get_time() -> String {
         .to_offset(*OFFSET)
         .format(&FORMAT)
         .expect("failed to format time")
+}
+
+fn format_msg(success: bool) -> String {
+    let time = get_time();
+    let status = format_status(success);
+    // separate branches to keep "at" visually aligned
+    if success {
+        format!("{ok}     at {time}", ok = status)
+    } else {
+        format!("{failed} at {time}", failed = status)
+    }
+}
+
+fn format_status(success: bool) -> String {
+    if success {
+        "ok".green().to_string()
+    } else {
+        "failed".red().to_string()
+    }
 }
 
 fn flush() {
