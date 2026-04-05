@@ -47,7 +47,7 @@ struct Args {
     sleep_timeout: u64,
 
     /// Do not perform real requests
-    #[arg(long)]
+    #[arg(long, hide = true)]
     test: bool,
 }
 
