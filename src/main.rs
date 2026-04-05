@@ -9,6 +9,30 @@ use clap::Parser;
 use owo_colors::OwoColorize;
 use time::{UtcOffset, format_description::StaticFormatDescription};
 
+const STATUS: &str = "status";
+const OK: &str = "ok";
+const FAILED: &str = "failed";
+
+/// Max len of `["status", "ok", "failed"]`
+///
+/// Note that if it's required to align string after using `to_string()`, e.g.:
+///
+/// ```
+/// let ok = OK.green().to_string();
+/// println!("{ok:<PREFIX_LEN$}");
+/// ```
+///
+/// prefix should be adjusted to include number of additional ascii color
+/// codes, e.g. for fg colors:
+///
+/// ```
+/// let ok = OK.green().to_string();
+/// println!("{ok:<width$}", width = PREFIX_LEN + 10);
+/// ```
+///
+/// 10 is because green looks like `\[32mok\[39m`
+const PREFIX_LEN: usize = 6;
+
 #[derive(Debug, Parser)]
 struct Args {
     /// Address to check
@@ -35,7 +59,11 @@ fn main() {
     if args.test {
         println!("running in test mode");
     }
-    println!("{} at {}", "status".dimmed(), "first seen".dimmed());
+    println!(
+        "{:<PREFIX_LEN$} at {}",
+        STATUS.dimmed(),
+        "first seen".dimmed()
+    );
 
     let mut prev_success = None;
     loop {
@@ -102,20 +130,19 @@ fn get_time() -> String {
 
 fn format_msg(success: bool) -> String {
     let time = get_time();
-    let status = format_status(success);
-    // separate branches to keep "at" visually aligned
-    if success {
-        format!("{ok}     at {time}", ok = status)
+    let status = if success {
+        OK.green().into_styled()
     } else {
-        format!("{failed} at {time}", failed = status)
-    }
+        FAILED.red().into_styled()
+    };
+    format!("{status:<PREFIX_LEN$} at {time}")
 }
 
 fn format_status(success: bool) -> String {
     if success {
-        "ok".green().to_string()
+        OK.green().to_string()
     } else {
-        "failed".red().to_string()
+        FAILED.red().to_string()
     }
 }
 
