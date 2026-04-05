@@ -70,7 +70,7 @@ fn main() {
     let mut prev_success = None;
     let mut prev_timer = None;
     loop {
-        print!("  checking{:<20}\r", "");
+        print!("  checking{:<40}\r", "");
         flush();
 
         let success = if args.test {
@@ -90,7 +90,12 @@ fn main() {
         prev_success = Some(success);
         for i in 0..args.sleep_timeout {
             let i = args.sleep_timeout - i;
-            print!("  {i} s (last status {}) \r", format_status(success));
+            print!(
+                "  {i}s (status {} for {}){:<10}\r",
+                format_status(success),
+                format_sec(prev_timer.unwrap().elapsed()),
+                "",
+            );
             flush();
             std::thread::sleep(Duration::from_secs(1));
         }
