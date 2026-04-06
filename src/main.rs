@@ -91,7 +91,7 @@ fn main() {
         for i in 0..args.sleep_timeout {
             let i = args.sleep_timeout - i;
             print!(
-                "  {i}s (status {} for {}){:<10}\r",
+                "  {i}s (status {} for {}){:<20}\r",
                 format_status(success),
                 format_sec(prev_timer.unwrap().elapsed()),
                 "",
