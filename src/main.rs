@@ -72,41 +72,35 @@ fn main() {
     );
 
     let mut prev_success = None;
-    let mut timer = Instant::now();
+    let mut timer = None;
     loop {
-        print!("  checking{:<40}\r", "");
+        print!("  checking{:<10}\r", "");
         flush();
 
         let success = if args.test {
             std::thread::sleep(Duration::from_secs(args.curl_timeout));
             test_rng.next().unwrap() == 0
         } else {
-            check(&args.address, args.curl_timeout)
+            check(&args.address, args.curl_timeout, timer)
         };
 
-        if prev_success.is_some() {
-            print_append_how_long(timer.elapsed()).unwrap();
-        }
         if prev_success.is_none_or(|prev| prev != success) {
             println!("{}", format_msg(success));
-            timer = Instant::now();
+            timer = Some(Instant::now());
         }
         prev_success = Some(success);
         for i in 0..args.sleep_timeout {
+            print_append_how_long(timer).unwrap();
+
             let i = args.sleep_timeout - i;
-            print!(
-                "  {i}s (status {} for {}){:<20}\r",
-                format_status(success),
-                format_sec(timer.elapsed()),
-                "",
-            );
+            print!("  {i}s{:<10}\r", "");
             flush();
             std::thread::sleep(Duration::from_secs(1));
         }
     }
 }
 
-fn check(address: &str, timeout_sec: u64) -> bool {
+fn check(address: &str, timeout_sec: u64, cur_timer: Option<Instant>) -> bool {
     let mut handle = Command::new("curl")
         .args(["--silent", address])
         .stdout(Stdio::null())
@@ -115,6 +109,8 @@ fn check(address: &str, timeout_sec: u64) -> bool {
         .expect("failed to spawn curl command");
 
     for _ in 0..timeout_sec {
+        print_append_how_long(cur_timer).unwrap();
+
         std::thread::sleep(Duration::from_secs(1));
         if let Some(status) = handle
             .try_wait()
@@ -142,15 +138,19 @@ fn get_time() -> String {
         .expect("failed to format time")
 }
 
-fn print_append_how_long(dur: Duration) -> Result<(), std::io::Error> {
+fn print_append_how_long(timer: Option<Instant>) -> Result<(), std::io::Error> {
     static LEN: LazyLock<u16> =
         LazyLock::new(|| (PREFIX_LEN + " at ".len() + get_time().len()) as u16);
+
+    let Some(timer) = timer else {
+        return Ok(());
+    };
 
     std::io::stdout()
         .execute(MoveToColumn(0))?
         .execute(MoveUp(1))?
         .execute(MoveRight(*LEN))?;
-    println!(" (for {}){:<10}", format_sec(dur), "");
+    println!(" (for {}){:<10}", format_sec(timer.elapsed()), "");
     Ok(())
 }
 
@@ -162,14 +162,6 @@ fn format_msg(success: bool) -> String {
         FAILED.red().into_styled()
     };
     format!("{status:<PREFIX_LEN$} at {time}")
-}
-
-fn format_status(success: bool) -> String {
-    if success {
-        OK.green().to_string()
-    } else {
-        FAILED.red().to_string()
-    }
 }
 
 fn format_sec(dur: Duration) -> String {
