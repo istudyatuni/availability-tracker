@@ -5,7 +5,8 @@ Track availability of address/IP over time
 Usage:
 
 ```sh
-cargo r --release -- https://example.com
+cargo install --git https://github.com/istudyatuni/availability-tracker
+track-availability https://example.com
 ```
 
 Sample output:
