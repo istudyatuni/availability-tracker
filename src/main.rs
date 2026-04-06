@@ -126,9 +126,8 @@ fn check(address: &str, timeout_sec: u64) -> bool {
 }
 
 fn get_time() -> String {
-    const FORMAT: StaticFormatDescription = time::macros::format_description!(
-        "[year]-[month]-[day] [hour]:[minute]:[second]+[offset_hour]:[offset_minute]"
-    );
+    const FORMAT: StaticFormatDescription =
+        time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
 
     static OFFSET: LazyLock<UtcOffset> =
         LazyLock::new(|| UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
