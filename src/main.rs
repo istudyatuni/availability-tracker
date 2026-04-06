@@ -6,6 +6,10 @@ use std::{
 };
 
 use clap::Parser;
+use crossterm::{
+    ExecutableCommand,
+    cursor::{MoveRight, MoveToColumn, MoveUp},
+};
 use owo_colors::OwoColorize;
 use time::{UtcOffset, format_description::StaticFormatDescription};
 
@@ -60,15 +64,15 @@ fn main() {
         println!("running in test mode");
     }
     println!(
-        "{:<PREFIX_LEN$} at {:<seen_width$} (after {})",
+        "{:<PREFIX_LEN$} at {:<seen_width$} (unchanged for {})",
         STATUS.dimmed(),
         "first seen".dimmed(),
-        "since previous".dimmed(),
+        "how long".dimmed(),
         seen_width = get_time().len(),
     );
 
     let mut prev_success = None;
-    let mut prev_timer = None;
+    let mut timer = Instant::now();
     loop {
         print!("  checking{:<40}\r", "");
         flush();
@@ -80,12 +84,12 @@ fn main() {
             check(&args.address, args.curl_timeout)
         };
 
+        if prev_success.is_some() {
+            print_append_how_long(timer.elapsed()).unwrap();
+        }
         if prev_success.is_none_or(|prev| prev != success) {
-            let elapsed = prev_timer
-                .map(|t: Instant| format!(" (after {})", format_sec(t.elapsed())))
-                .unwrap_or_default();
-            println!("{}{elapsed}", format_msg(success));
-            prev_timer = Some(Instant::now());
+            println!("{}", format_msg(success));
+            timer = Instant::now();
         }
         prev_success = Some(success);
         for i in 0..args.sleep_timeout {
@@ -93,7 +97,7 @@ fn main() {
             print!(
                 "  {i}s (status {} for {}){:<20}\r",
                 format_status(success),
-                format_sec(prev_timer.unwrap().elapsed()),
+                format_sec(timer.elapsed()),
                 "",
             );
             flush();
@@ -136,6 +140,18 @@ fn get_time() -> String {
         .to_offset(*OFFSET)
         .format(&FORMAT)
         .expect("failed to format time")
+}
+
+fn print_append_how_long(dur: Duration) -> Result<(), std::io::Error> {
+    static LEN: LazyLock<u16> =
+        LazyLock::new(|| (PREFIX_LEN + " at ".len() + get_time().len()) as u16);
+
+    std::io::stdout()
+        .execute(MoveToColumn(0))?
+        .execute(MoveUp(1))?
+        .execute(MoveRight(*LEN))?;
+    println!(" (for {}){:<10}", format_sec(dur), "");
+    Ok(())
 }
 
 fn format_msg(success: bool) -> String {
