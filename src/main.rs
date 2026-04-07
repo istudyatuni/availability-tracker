@@ -121,6 +121,8 @@ fn check(address: &str, timeout_sec: u64, cur_timer: Option<Instant>) -> bool {
     }
 
     handle.kill().expect("failed to kill curl");
+    // cleanup process so it won't become zombie
+    let _ = handle.wait();
 
     false
 }
