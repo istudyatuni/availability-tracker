@@ -6,11 +6,9 @@ use std::{
 };
 
 use clap::Parser;
-use crossterm::{
-    ExecutableCommand,
-    cursor::{MoveRight, MoveToColumn, MoveUp},
-};
+use crossterm::{ExecutableCommand, cursor};
 use owo_colors::OwoColorize;
+use signal_hook::{consts::SIGINT, iterator::Signals};
 use time::{UtcOffset, format_description::StaticFormatDescription};
 
 const STATUS: &str = "status";
@@ -58,6 +56,10 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
+    hide_cursor().unwrap();
+    install_panic_hook();
+    install_signal_handler().unwrap();
+
     let mut test_rng = [0, 1, 1, 0, 0, 0, 0, 1, 1, 1].into_iter();
 
     if args.test {
@@ -74,7 +76,7 @@ fn main() {
     let mut prev_success = None;
     let mut timer = None;
     loop {
-        print!("  checking{:<10}\r", "");
+        print!("checking{:<10}\r", "");
         flush();
 
         let success = if args.test {
@@ -93,7 +95,7 @@ fn main() {
             print_append_how_long(timer).unwrap();
 
             let i = args.sleep_timeout - i;
-            print!("  {i}s{:<10}\r", "");
+            print!("{i}s{:<10}\r", "");
             flush();
             std::thread::sleep(Duration::from_secs(1));
         }
@@ -149,11 +151,44 @@ fn print_append_how_long(timer: Option<Instant>) -> Result<(), std::io::Error> {
     };
 
     std::io::stdout()
-        .execute(MoveToColumn(0))?
-        .execute(MoveUp(1))?
-        .execute(MoveRight(*LEN))?;
+        .execute(cursor::MoveToColumn(0))?
+        .execute(cursor::MoveUp(1))?
+        .execute(cursor::MoveRight(*LEN))?;
     println!(" (for {}){:<10}", format_sec(timer.elapsed()), "");
     Ok(())
+}
+
+fn show_cursor() -> Result<(), std::io::Error> {
+    std::io::stdout().execute(cursor::Show)?;
+    Ok(())
+}
+
+fn hide_cursor() -> Result<(), std::io::Error> {
+    std::io::stdout().execute(cursor::Hide)?;
+    Ok(())
+}
+
+fn install_signal_handler() -> Result<(), Box<dyn std::error::Error>> {
+    let mut signals = Signals::new([SIGINT])?;
+
+    std::thread::spawn(move || {
+        signals.forever().next().unwrap();
+        show_cursor().unwrap();
+        println!();
+        std::process::exit(0);
+    });
+
+    Ok(())
+}
+
+fn install_panic_hook() {
+    let original_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Err(e) = show_cursor() {
+            eprintln!("failed to restore cursor: {e}");
+        }
+        original_hook(info);
+    }));
 }
 
 fn format_msg(success: bool) -> String {
