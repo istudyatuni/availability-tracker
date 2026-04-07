@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.6.0", features = ["derive"] }
-crossterm = "0.29.0"
+crossterm = { version = "0.29.0", default-features = false }
 humantime = "2.3.0"
 owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 signal-hook = "0.4.4"
