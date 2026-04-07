@@ -95,7 +95,7 @@ fn main() {
             print_append_how_long(timer).unwrap();
 
             let i = args.sleep_timeout - i;
-            print!("{i}s{:<10}\r", "");
+            print!("sleeping {i}s{:<10}\r", "");
             flush();
             std::thread::sleep(Duration::from_secs(1));
         }
