@@ -47,10 +47,6 @@ struct Args {
     /// Timeout in seconds between requests
     #[arg(long = "sleep", default_value_t = 8)]
     sleep_timeout: u64,
-
-    /// Do not perform real requests
-    #[arg(long, hide = true)]
-    test: bool,
 }
 
 fn main() {
@@ -60,11 +56,6 @@ fn main() {
     install_panic_hook();
     install_signal_handler().unwrap();
 
-    let mut test_rng = [0, 1, 1, 0, 0, 0, 0, 1, 1, 1].into_iter();
-
-    if args.test {
-        println!("running in test mode");
-    }
     println!(
         "{:<PREFIX_LEN$} at {:<seen_width$} (unchanged for {})",
         STATUS.dimmed(),
@@ -79,13 +70,7 @@ fn main() {
         print!("checking{:<10}\r", "");
         flush();
 
-        let success = if args.test {
-            std::thread::sleep(Duration::from_secs(args.curl_timeout));
-            test_rng.next().unwrap() == 0
-        } else {
-            check(&args.address, args.curl_timeout, timer)
-        };
-
+        let success = check(&args.address, args.curl_timeout, timer);
         if prev_success.is_none_or(|prev| prev != success) {
             println!("{}", format_msg(success));
             timer = Some(Instant::now());
