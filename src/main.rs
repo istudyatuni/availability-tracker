@@ -11,6 +11,10 @@ use owo_colors::OwoColorize;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use time::{OffsetDateTime, UtcOffset, format_description::StaticFormatDescription};
 
+use stat::Stat;
+
+mod stat;
+
 const STATUS: &str = "status";
 const OK: &str = "ok";
 const FAILED: &str = "failed";
@@ -68,8 +72,12 @@ fn main() {
 
     let mut prev_success = None;
     let mut timer = None;
+    let mut stat = Stat::default();
     loop {
-        print!("checking{:<10}\r", "");
+        if stat.has_failed() {
+            print!("{stat}, ");
+        }
+        print!("checking{:<30}\r", "");
         flush();
 
         let success = check(&args.address, args.curl_timeout, timer);
@@ -78,10 +86,14 @@ fn main() {
             timer = Some(Instant::now());
         }
         prev_success = Some(success);
+        stat.add_success(success);
         for i in 0..args.sleep_timeout {
             print_append_how_long(timer).unwrap();
 
             let i = args.sleep_timeout - i;
+            if stat.has_failed() {
+                print!("{stat}, ");
+            }
             print!("sleeping {i}s{:<10}\r", "");
             flush();
             std::thread::sleep(ONE_SEC);
