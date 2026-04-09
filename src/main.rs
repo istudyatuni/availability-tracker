@@ -9,7 +9,7 @@ use clap::Parser;
 use crossterm::{ExecutableCommand, cursor};
 use owo_colors::OwoColorize;
 use signal_hook::{consts::SIGINT, iterator::Signals};
-use time::{UtcOffset, format_description::StaticFormatDescription};
+use time::{OffsetDateTime, UtcOffset, format_description::StaticFormatDescription};
 
 const STATUS: &str = "status";
 const OK: &str = "ok";
@@ -61,7 +61,7 @@ fn main() {
         STATUS.dimmed(),
         "first seen".dimmed(),
         "how long".dimmed(),
-        seen_width = get_time().len(),
+        seen_width = get_time_fmt().len(),
     );
 
     let mut prev_success = None;
@@ -114,22 +114,23 @@ fn check(address: &str, timeout_sec: u64, cur_timer: Option<Instant>) -> bool {
     false
 }
 
-fn get_time() -> String {
-    const FORMAT: StaticFormatDescription =
-        time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
-
+fn get_time() -> OffsetDateTime {
     static OFFSET: LazyLock<UtcOffset> =
         LazyLock::new(|| UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC));
 
-    time::UtcDateTime::now()
-        .to_offset(*OFFSET)
-        .format(&FORMAT)
-        .expect("failed to format time")
+    time::UtcDateTime::now().to_offset(*OFFSET)
+}
+
+fn get_time_fmt() -> String {
+    const FORMAT: StaticFormatDescription =
+        time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+
+    get_time().format(&FORMAT).expect("failed to format time")
 }
 
 fn print_append_how_long(timer: Option<Instant>) -> Result<(), std::io::Error> {
     static LEN: LazyLock<u16> =
-        LazyLock::new(|| (PREFIX_LEN + " at ".len() + get_time().len()) as u16);
+        LazyLock::new(|| (PREFIX_LEN + " at ".len() + get_time_fmt().len()) as u16);
 
     let Some(timer) = timer else {
         return Ok(());
@@ -177,7 +178,7 @@ fn install_panic_hook() {
 }
 
 fn format_msg(success: bool) -> String {
-    let time = get_time();
+    let time = get_time_fmt();
     let status = if success {
         OK.green().into_styled()
     } else {
