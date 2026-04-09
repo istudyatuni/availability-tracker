@@ -35,6 +35,8 @@ const FAILED: &str = "failed";
 /// 10 is because green looks like `\[32mok\[39m`
 const PREFIX_LEN: usize = 6;
 
+const ONE_SEC: Duration = Duration::from_secs(1);
+
 #[derive(Debug, Parser)]
 struct Args {
     /// Address to check
@@ -82,7 +84,7 @@ fn main() {
             let i = args.sleep_timeout - i;
             print!("sleeping {i}s{:<10}\r", "");
             flush();
-            std::thread::sleep(Duration::from_secs(1));
+            std::thread::sleep(ONE_SEC);
         }
     }
 }
@@ -98,7 +100,7 @@ fn check(address: &str, timeout_sec: u64, cur_timer: Option<Instant>) -> bool {
     for _ in 0..timeout_sec {
         print_append_how_long(cur_timer).unwrap();
 
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(ONE_SEC);
         if let Some(status) = handle
             .try_wait()
             .expect("failed to wait curl subprocess status")
